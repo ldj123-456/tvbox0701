@@ -4,18 +4,18 @@
       "key": "zuida44",
       "name": "最大资源-点播测试",
       "type": 1,
-      "api": "https://api.zuidapi.com/api.php/provide/vod",
+      "api": "https://api.zuidapi.com/api.php/provide/vod/",
       "searchable": 1,
-      "quickSearch": 0,
+      "quickSearch": 1,
       "filterable": 0
     },
     {
       "key": "wujin44",
       "name": "无尽资源-点播测试",
       "type": 1,
-      "api": "https://api.wujinapi.com/api.php/provide/vod",
+      "api": "https://api.wujinapi.com/api.php/provide/vod/",
       "searchable": 1,
-      "quickSearch": 0,
+      "quickSearch": 1,
       "filterable": 0
     }
   ],
