@@ -1,0 +1,10 @@
+{
+  "sites": [
+    {
+      "name": "红果短剧",
+      "type": 3,
+      "api": "csp_fqdj",
+      "ext": "https://ghp.xptvhelper.link/https://raw.githubusercontent.com/fangkuia/XPTV/main/js/fqdj.js"
+    }
+  ]
+}
