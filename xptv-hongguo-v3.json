@@ -1,0 +1,10 @@
+{
+  "sites": [
+    {
+      "name": "红果短剧（完整分集测试 v3）",
+      "type": 3,
+      "api": "csp_hongguo_v3",
+      "ext": "https://cdn.jsdelivr.net/gh/ldj123-456/tvbox0701@main/xptv-hongguo-v3.js"
+    }
+  ]
+}
