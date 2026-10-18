@@ -1,0 +1,10 @@
+{
+  "sites": [
+    {
+      "name": "红果直连｜10月独立测试",
+      "type": 3,
+      "api": "csp_hongguo_direct_20261018",
+      "ext": "https://cdn.jsdelivr.net/gh/ldj123-456/tvbox0701@main/xptv-hongguo-direct-20261018.js"
+    }
+  ]
+}
