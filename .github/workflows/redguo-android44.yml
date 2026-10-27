@@ -17,8 +17,14 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - run: sdkmanager 'platforms;android-34' 'build-tools;34.0.0'
+      # Ubuntu runner already provides the Android command-line tools.
+      # The obsolete "tools" SDK package requested by setup-android@v3
+      # causes an early build failure on this runner.
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'platforms;android-34' 'build-tools;34.0.0'
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
