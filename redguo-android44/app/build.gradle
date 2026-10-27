@@ -1,0 +1,16 @@
+plugins { id 'com.android.application' }
+android {
+ namespace 'dev.redguo.codecprobe'
+ compileSdk 34
+ defaultConfig {
+  applicationId 'dev.redguo.codecprobe'
+  minSdk 19
+  targetSdk 28
+  versionCode 4
+  versionName '0.4.0'
+  ndk { abiFilters 'armeabi-v7a' }
+ }
+ packaging { jniLibs { useLegacyPackaging true } }
+ compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
+}
+dependencies { implementation 'org.videolan.android:libvlc-all:3.5.1' }
