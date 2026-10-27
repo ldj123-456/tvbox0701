@@ -53,7 +53,7 @@ public final class MainActivity extends Activity implements SurfaceHolder.Callba
     super.onCreate(b);
     LinearLayout root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL);
     root.setPadding(10,8,10,8); root.setBackgroundColor(Color.rgb(15,18,26));
-    TextView title=new TextView(this); title.setText("红果轻量TV · v0.5 实机联网诊断"); title.setTextColor(Color.WHITE);
+    TextView title=new TextView(this); title.setText("红果轻量TV · v0.6 TLS联网诊断"); title.setTextColor(Color.WHITE);
     title.setTextSize(20); root.addView(title,new LinearLayout.LayoutParams(-1,48));
     LinearLayout tests=row(50);
     makeButton("H.264 360P",tests,()->playSample("h264_360.mp4"));
@@ -95,7 +95,7 @@ public final class MainActivity extends Activity implements SurfaceHolder.Callba
         final java.util.List<HongguoCatalog.Series> series =
             keyword==null?repo.home():repo.search(keyword);
         runOnUiThread(()->{
-          log("公开目录读取成功，识别 "+series.size()+" 部剧");
+          log("公开目录读取成功，识别 "+series.size()+" 部剧；"+ModernTls.status());
           final String[] titles=new String[series.size()];
           for(int i=0;i<series.size();i++)titles[i]=series.get(i).toString();
           new AlertDialog.Builder(this).setTitle("红果官网公开剧集")
@@ -104,7 +104,7 @@ public final class MainActivity extends Activity implements SurfaceHolder.Callba
         });
       } catch(Throwable error) {
         runOnUiThread(()->{
-          String message="官网目录请求失败："+error.getClass().getSimpleName()+" "+error.getMessage();
+          String message="官网目录请求失败："+error.getClass().getSimpleName()+" "+error.getMessage()+"\n"+ModernTls.status();
           log(message);
           new AlertDialog.Builder(this).setTitle("联网诊断结果")
             .setMessage(message+"\n\nAndroid 4.4 可能存在 TLS/证书兼容问题；请拍摄这段错误。")
@@ -119,7 +119,7 @@ public final class MainActivity extends Activity implements SurfaceHolder.Callba
       try {
         final HongguoCatalog.Detail detail=new HongguoCatalog().detail(series.id);
         runOnUiThread(()->{
-          log("分集读取成功："+detail.name+"，共 "+detail.episodeIds.size()+" 集");
+          log("分集读取成功："+detail.name+"，共 "+detail.episodeIds.size()+" 集；"+ModernTls.status());
           final String[] episodes=new String[detail.episodeIds.size()];
           for(int i=0;i<episodes.length;i++)episodes[i]="第 "+(i+1)+" 集";
           new AlertDialog.Builder(this)
@@ -156,7 +156,7 @@ public final class MainActivity extends Activity implements SurfaceHolder.Callba
       }
     }catch(Throwable t){report.append("Codec probe failed: ").append(t.getClass().getSimpleName()).append("\n");}
     if(!any)report.append("系统未公布 HEVC 解码器（不代表 VLC 软解不可用）\n");
-    report.append("\n测试日志：\n").append(logs);
+    report.append("联网 TLS 诊断：").append(ModernTls.status()).append("\n\n测试日志：\n").append(logs);
     ScrollView scroller=new ScrollView(this);
     TextView text=new TextView(this); text.setText(report);text.setTextSize(16);text.setPadding(14,14,14,14);
     scroller.addView(text);

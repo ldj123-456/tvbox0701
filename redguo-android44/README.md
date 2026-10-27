@@ -1,31 +1,23 @@
-# RedGuo Android 4.4 v0.5 - independent network and playback test
+# RedGuo Android 4.4 v0.6 — TLS compatibility test
 
-Target: Huawei EC6108V9U / Android 4.4.2 API 19 / ARM32 (`armeabi-v7a`). This is an independently installable **integration test APK**, not yet a complete playable Hongguo client.
+Target device: EC6108V9U / Android 4.4.2 (API 19) / ARM32.
 
-## Verified in v0.4 on the real device
-- LibVLC 3.5.1 software decoding completed original H.264 360p / HEVC 360p / HEVC 720p offline samples (each a few seconds).
-- The system did not advertise an HEVC decoder, so LibVLC software decoding is the promising path.
-- Long-duration real drama decoding is **not yet** proven.
+v0.4 on-device video tests completed H.264 360p, HEVC 360p, HEVC 720p with **LibVLC 3.5.1 software decoding**. v0.5 added public Hongguo website browsing, but its Android 4.4 system OpenSSL connection was rejected at SSL handshake, reporting SSL23_GET_SERVER_HELLO alert handshake failure.
 
-## New in v0.5
-- `HongguoCatalog.java`: fetches public metadata from `https://hongguoduanju.com/`.
-- Search via public website, and full episode ID lists from `/detail?series_id=...`.
-- TLS 1.2 explicitly requested for Android 4.4, with **system certificate verification still enabled**.
-- Strict response size and time limits, background network calls, visible failure diagnostics; no permanent media URLs or stored credentials.
-- Maintains the same v0.4 standalone LibVLC codec tests.
+## Changes in v0.6
+- Embeds Google's Apache-2.0 Conscrypt for modern HTTPS (2.5.2, `armeabi-v7a` native library).
+- Creates TLS session via app-bundled provider rather than KitKat system OpenSSL; enables only TLS 1.2 / 1.3 (when available).
+- Explicit SNI for the official hostname.
+- Keeps normal certificate-chain verification **and hostname verification**; no trust-all, insecure redirect or plain HTTP fallback.
+- Logs successful negotiated TLS protocol and cipher or detailed network error.
+- Keeps the v0.5 official public web catalogue, search and episode diagnostic actions, and original offline decoder tests.
 
-## Important boundaries
-- Episode IDs are **not playable streams**. Selecting an episode currently reports the ID, not a fake playback success.
-- No authenticated player API, DRM handling, media decryption or end-to-end Hongguo online playback has been implemented.
-- This test UI is temporary; the eventual client is intended to follow the established HGTV interface without adding product features.
-- The APK uses package name `dev.redguo.codecprobe` and will update this test app only. It does not overwrite HGTV or 影视仓.
-- Java code is authored independently; the official website is read as a public source. LibVLC is a VideoLAN component with its own applicable licenses.
+No video signing/DRM functions or authenticated playback requests are integrated. Episode directory success must not be described as video playback success.
 
-## Checkpoints on the TV
-1. Install v0.5 on EC6108V9U; offline H.264 and HEVC tests must still play.
-2. Select **红果官网目录（联网）**; note number of dramas returned or exact TLS error.
-3. Select a drama, verify full episode count; e.g. the public page for 军需处长的账本 currently shows 46 episodes.
-4. Try **剧名搜索（联网）**, then open a result's episodes.
-5. Capture the diagnostics dialog if the network fails. Do not send private account tokens or playback URLs.
+## TV test steps
+1. Install `app-debug.apk` from the newest successful Actions artifact, using package `dev.redguo.codecprobe`. This updates only our codec-test app, not HGTV/影视仓.
+2. Select `红果官网目录（联网）`.
+3. If it succeeds, select a drama and inspect episodes, then search by drama name.
+4. If it fails, photograph the error and `完整日志` dialog. Note `TLS 成功 TLSv1.2` vs certificate error vs HTTP response vs parse error.
 
-CI builds the APK on a separate branch, checks minimum API 19, ARM32 native libraries, sample assets and old-compatible V1 APK signature.
+Compiled on GitHub Actions. Recheck API19, ARM32, v1 signature, and Conscrypt JNI presence. Real-device results remain essential.

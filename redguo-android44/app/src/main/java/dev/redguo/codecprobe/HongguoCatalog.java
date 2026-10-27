@@ -6,15 +6,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
 
 /**
  * Public website catalog inspection only. No authentication, playback signing,
@@ -78,10 +74,8 @@ final class HongguoCatalog {
   }
   private static String read(String uri) throws Exception {
     HttpsURLConnection con=(HttpsURLConnection)new URL(uri).openConnection();
-    // Android 4.4 supports TLS 1.2, although default enablement varies by OEM.
-    SSLContext ssl=SSLContext.getInstance("TLSv1.2");
-    ssl.init(null,null,new SecureRandom()); // platform default trust managers
-    con.setSSLSocketFactory(ssl.getSocketFactory());
+    // Bundled modern TLS implementation on API 19, with system trust and host checks.
+    con.setSSLSocketFactory(ModernTls.factory());
     con.setInstanceFollowRedirects(false);
     con.setConnectTimeout(12000); con.setReadTimeout(15000);
     con.setRequestProperty("User-Agent","Mozilla/5.0 (Linux; Android 4.4.2; zh-CN) AppleWebKit/537.36 Mobile Safari/537.36");
@@ -101,6 +95,9 @@ final class HongguoCatalog {
         }
         return new String(out.toByteArray(),"UTF-8");
       } finally { in.close(); }
+    } catch(Exception error) {
+      ModernTls.noteFailure(error);
+      throw error;
     } finally {con.disconnect();}
   }
   private static JSONObject router(String html) throws Exception {
