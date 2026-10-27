@@ -37,7 +37,7 @@ jobs:
           for spec in 'h264 640x360 libx264' 'hevc 640x360 libx265' 'hevc 1280x720 libx265'; do
             read -r kind size encoder <<< "$spec"
             suffix=$(echo "$size" | cut -d x -f 2)
-            ffmpeg -hide_banner -loglevel error -nostdin -y -f lavfi -i "testsrc2=duration=5:size=$size:rate=12" -f lavfi -i "sine=frequency=440:duration=5" -t 5 -c:v "$encoder" -preset ultrafast -pix_fmt yuv420p -threads 2 -c:a aac -b:a 48k "redguo-android44/app/src/main/assets/${kind}_${suffix}.mp4"
+            ffmpeg -hide_banner -loglevel error -nostdin -y -f lavfi -i "testsrc2=duration=3:size=$size:rate=10" -f lavfi -i "sine=frequency=440:duration=3" -t 3 -c:v "$encoder" -preset ultrafast -pix_fmt yuv420p -threads 1 -c:a aac -b:a 48k "redguo-android44/app/src/main/assets/${kind}_${suffix}.mp4"
           done
           ls -lh redguo-android44/app/src/main/assets/
       - name: Build debug APK
