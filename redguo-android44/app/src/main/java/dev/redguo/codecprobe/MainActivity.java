@@ -13,6 +13,7 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.EditText;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import java.io.File;
@@ -65,6 +66,10 @@ public final class MainActivity extends Activity implements SurfaceHolder.Callba
     makeButton("完整日志",actions,()->showDetails());
     makeButton("暂停/继续",actions,()->toggle());
     root.addView(actions,new LinearLayout.LayoutParams(-1,60));
+    LinearLayout online=row(52);
+    makeButton("红果官网目录（联网）",online,()->loadPublicCatalog(null));
+    makeButton("剧名搜索（联网）",online,()->promptPublicSearch());
+    root.addView(online,new LinearLayout.LayoutParams(-1,58));
     surface=new SurfaceView(this); surface.getHolder().addCallback(this);
     root.addView(surface,new LinearLayout.LayoutParams(-1,0,1f));
     logText=new TextView(this); logText.setTextColor(Color.WHITE);logText.setTextSize(16);
@@ -72,6 +77,70 @@ public final class MainActivity extends Activity implements SurfaceHolder.Callba
     setContentView(root);
     log("已启动；API "+Build.VERSION.SDK_INT+"，CPU "+Build.CPU_ABI);
   }
+
+  /** Only public catalog metadata is requested. This does not pretend to have a playable stream. */
+  private void promptPublicSearch() {
+    final EditText input=new EditText(this);
+    input.setSingleLine(true);
+    input.setHint("请输入剧名");
+    new AlertDialog.Builder(this).setTitle("查询红果官网公开目录")
+      .setView(input).setPositiveButton("搜索",(dialog,which)->loadPublicCatalog(input.getText().toString()))
+      .setNegativeButton("取消",null).show();
+  }
+  private void loadPublicCatalog(final String keyword) {
+    log(keyword==null?"开始请求红果官网目录":"搜索剧名："+keyword);
+    new Thread(()->{
+      try {
+        HongguoCatalog repo=new HongguoCatalog();
+        final java.util.List<HongguoCatalog.Series> series =
+            keyword==null?repo.home():repo.search(keyword);
+        runOnUiThread(()->{
+          log("公开目录读取成功，识别 "+series.size()+" 部剧");
+          final String[] titles=new String[series.size()];
+          for(int i=0;i<series.size();i++)titles[i]=series.get(i).toString();
+          new AlertDialog.Builder(this).setTitle("红果官网公开剧集")
+            .setItems(titles,(dialog,which)->loadSeriesDetail(series.get(which)))
+            .setNegativeButton("关闭",null).show();
+        });
+      } catch(Throwable error) {
+        runOnUiThread(()->{
+          String message="官网目录请求失败："+error.getClass().getSimpleName()+" "+error.getMessage();
+          log(message);
+          new AlertDialog.Builder(this).setTitle("联网诊断结果")
+            .setMessage(message+"\n\nAndroid 4.4 可能存在 TLS/证书兼容问题；请拍摄这段错误。")
+            .setPositiveButton("关闭",null).show();
+        });
+      }
+    },"PublicHongguoCatalog").start();
+  }
+  private void loadSeriesDetail(final HongguoCatalog.Series series) {
+    log("读取 "+series.name+" 的分集目录");
+    new Thread(()->{
+      try {
+        final HongguoCatalog.Detail detail=new HongguoCatalog().detail(series.id);
+        runOnUiThread(()->{
+          log("分集读取成功："+detail.name+"，共 "+detail.episodeIds.size()+" 集");
+          final String[] episodes=new String[detail.episodeIds.size()];
+          for(int i=0;i<episodes.length;i++)episodes[i]="第 "+(i+1)+" 集";
+          new AlertDialog.Builder(this)
+            .setTitle(detail.name+"（"+episodes.length+" 集）")
+            .setItems(episodes,(d,idx)->{
+              String id=detail.episodeIds.get(idx);
+              log("分集目录已确认：第 "+(idx+1)+" 集，ID尾号 "+id.substring(Math.max(0,id.length()-4)));
+              new AlertDialog.Builder(this).setTitle("分集 "+(idx+1)+" 已识别")
+                .setMessage("已取得官网分集编号。当前版本只核验公开目录，尚未实现平台授权视频请求，不能冒充播放成功。")
+                .setPositiveButton("确定",null).show();
+            }).setNegativeButton("关闭",null).show();
+        });
+      } catch(Throwable error) {
+        runOnUiThread(()->{
+          log("详情读取失败："+error.getClass().getSimpleName()+" "+error.getMessage());
+          new AlertDialog.Builder(this).setMessage("详情读取失败："+error.getMessage()).setPositiveButton("关闭",null).show();
+        });
+      }
+    },"PublicHongguoDetail").start();
+  }
+
   private void showDetails() {
     StringBuilder report=new StringBuilder();
     report.append("Android ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")\n");
