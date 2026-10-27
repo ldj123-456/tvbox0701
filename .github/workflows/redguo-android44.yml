@@ -1,4 +1,4 @@
-name: RedGuo Android 4.4 codec build
+name: RedGuo Android 4.4 network catalog build
 on:
   push:
     branches: [redguo-android44-codec-probe]
@@ -6,6 +6,9 @@ on:
       - 'redguo-android44/**'
       - '.github/workflows/redguo-android44.yml'
   workflow_dispatch:
+concurrency:
+  group: redguo-android44-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -63,6 +66,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: RedGuoTV-Android44-codec-v0.4
+          name: RedGuoTV-Android44-catalog-v0.5
           path: redguo-android44/app/build/outputs/apk/debug/
           if-no-files-found: warn

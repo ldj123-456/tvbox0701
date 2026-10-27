@@ -53,7 +53,7 @@ public final class MainActivity extends Activity implements SurfaceHolder.Callba
     super.onCreate(b);
     LinearLayout root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL);
     root.setPadding(10,8,10,8); root.setBackgroundColor(Color.rgb(15,18,26));
-    TextView title=new TextView(this); title.setText("红果轻量TV · Android 4.4 解码自检"); title.setTextColor(Color.WHITE);
+    TextView title=new TextView(this); title.setText("红果轻量TV · v0.5 实机联网诊断"); title.setTextColor(Color.WHITE);
     title.setTextSize(20); root.addView(title,new LinearLayout.LayoutParams(-1,48));
     LinearLayout tests=row(50);
     makeButton("H.264 360P",tests,()->playSample("h264_360.mp4"));
