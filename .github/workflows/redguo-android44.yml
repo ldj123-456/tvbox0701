@@ -1,4 +1,4 @@
-name: RedGuo Android 4.4 TLS compatibility build
+name: RedGuo Android 4.4 CA root certificate compatibility build
 on:
   push:
     branches: [redguo-android44-codec-probe]
@@ -60,6 +60,7 @@ jobs:
           unzip -l "$APK" | tee /tmp/redguo-files.txt
           grep -Eq 'lib/armeabi-v7a/.*\.so' /tmp/redguo-files.txt
           grep -q 'lib/armeabi-v7a/libconscrypt_jni.so' /tmp/redguo-files.txt
+          grep -q 'assets/mozilla-ca-2026-10-20.pem' /tmp/redguo-files.txt
           for name in h264_360 hevc_360 hevc_720; do grep -q "assets/${name}.mp4" /tmp/redguo-files.txt; done
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose --min-sdk-version 19 "$APK" | tee /tmp/redguo-signing.txt
           grep -q 'Verified using v1 scheme.*true' /tmp/redguo-signing.txt
@@ -67,6 +68,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: RedGuoTV-Android44-TLS-v0.6
+          name: RedGuoTV-Android44-CARoot-v0.7
           path: redguo-android44/app/build/outputs/apk/debug/
           if-no-files-found: warn

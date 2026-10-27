@@ -18,6 +18,8 @@ import javax.net.ssl.HttpsURLConnection;
  * All requests are HTTPS to the official homepage domain.
  */
 final class HongguoCatalog {
+  private final android.content.Context context;
+  HongguoCatalog(android.content.Context context) { this.context=context.getApplicationContext(); }
   static final String ROOT = "https://hongguoduanju.com";
   static final class Series {
     final String id, name;
@@ -72,10 +74,10 @@ final class HongguoCatalog {
     }
     return "";
   }
-  private static String read(String uri) throws Exception {
+  private String read(String uri) throws Exception {
     HttpsURLConnection con=(HttpsURLConnection)new URL(uri).openConnection();
     // Bundled modern TLS implementation on API 19, with system trust and host checks.
-    con.setSSLSocketFactory(ModernTls.factory());
+    con.setSSLSocketFactory(ModernTls.factory(context));
     con.setInstanceFollowRedirects(false);
     con.setConnectTimeout(12000); con.setReadTimeout(15000);
     con.setRequestProperty("User-Agent","Mozilla/5.0 (Linux; Android 4.4.2; zh-CN) AppleWebKit/537.36 Mobile Safari/537.36");

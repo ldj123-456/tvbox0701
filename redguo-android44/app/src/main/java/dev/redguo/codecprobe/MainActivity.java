@@ -53,7 +53,7 @@ public final class MainActivity extends Activity implements SurfaceHolder.Callba
     super.onCreate(b);
     LinearLayout root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL);
     root.setPadding(10,8,10,8); root.setBackgroundColor(Color.rgb(15,18,26));
-    TextView title=new TextView(this); title.setText("红果轻量TV · v0.6 TLS联网诊断"); title.setTextColor(Color.WHITE);
+    TextView title=new TextView(this); title.setText("红果轻量TV · v0.7 证书链联网诊断"); title.setTextColor(Color.WHITE);
     title.setTextSize(20); root.addView(title,new LinearLayout.LayoutParams(-1,48));
     LinearLayout tests=row(50);
     makeButton("H.264 360P",tests,()->playSample("h264_360.mp4"));
@@ -91,7 +91,7 @@ public final class MainActivity extends Activity implements SurfaceHolder.Callba
     log(keyword==null?"开始请求红果官网目录":"搜索剧名："+keyword);
     new Thread(()->{
       try {
-        HongguoCatalog repo=new HongguoCatalog();
+        HongguoCatalog repo=new HongguoCatalog(getApplicationContext());
         final java.util.List<HongguoCatalog.Series> series =
             keyword==null?repo.home():repo.search(keyword);
         runOnUiThread(()->{
@@ -117,7 +117,7 @@ public final class MainActivity extends Activity implements SurfaceHolder.Callba
     log("读取 "+series.name+" 的分集目录");
     new Thread(()->{
       try {
-        final HongguoCatalog.Detail detail=new HongguoCatalog().detail(series.id);
+        final HongguoCatalog.Detail detail=new HongguoCatalog(getApplicationContext()).detail(series.id);
         runOnUiThread(()->{
           log("分集读取成功："+detail.name+"，共 "+detail.episodeIds.size()+" 集；"+ModernTls.status());
           final String[] episodes=new String[detail.episodeIds.size()];
