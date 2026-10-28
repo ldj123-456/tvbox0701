@@ -5,6 +5,8 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.SurfaceView;
+import android.view.View;
+import android.util.Log;
 import android.widget.FrameLayout;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -31,6 +33,8 @@ public final class HgtvLibVlcAdapter implements AutoCloseable {
   private Events events;
   private int generation;
   private boolean closed;
+  private View.OnLayoutChangeListener viewportListener;
+  private int lastWindowW,lastWindowH;
 
   public HgtvLibVlcAdapter(Context context,FrameLayout host){
     if(context==null||host==null)throw new IllegalArgumentException("missing player host");
@@ -54,23 +58,54 @@ public final class HgtvLibVlcAdapter implements AutoCloseable {
     final MediaPlayer next=new MediaPlayer(vlc);
     player=next;
     surface=new SurfaceView(host.getContext());
+    // Keep SurfaceView MATCH_PARENT for the lifetime of a single episode.
+    // Resizing/replacing its native buffer on video format changes caused
+    // black-screen regressions on the target Android 4.4 device.
     host.addView(surface,0,new FrameLayout.LayoutParams(-1,-1));
+    viewportListener=new View.OnLayoutChangeListener(){
+      @Override public void onLayoutChange(View view,int l,int t,int r,int b,
+          int oldL,int oldT,int oldR,int oldB){
+        if(player==next && generation==current)syncVideoWindow(next);
+      }
+    };
+    host.addOnLayoutChangeListener(viewportListener);
     next.setEventListener(event->ui.post(()->{
       if(generation!=current||player!=next)return;
-      if(event.type==MediaPlayer.Event.Vout){if(events!=null)events.onFirstVideo();}
+      if(event.type==MediaPlayer.Event.Vout){
+        syncVideoWindow(next);
+        if(events!=null)events.onFirstVideo();
+      }
       else if(event.type==MediaPlayer.Event.EndReached){if(events!=null)events.onCompleted();}
       else if(event.type==MediaPlayer.Event.EncounteredError){if(events!=null)events.onError("VLC decode or media transport error");}
     }));
     next.getVLCVout().setVideoView(surface);
+    // Explicit window geometry fixes portrait video drawn on the left.
+    syncVideoWindow(next);
     next.getVLCVout().attachViews();
+    host.post(()->{if(player==next && generation==current)syncVideoWindow(next);});
     Media media=new Media(vlc,Uri.parse(server.url()));
     try{
       media.setHWDecoderEnabled(false,false);
       next.setMedia(media);
     }finally{media.release();}
+    // Let VLC letterbox portrait material; never force 16:9 stretching.
+    next.setAspectRatio(null);
+    next.setScale(0f);
     if(speed>0 && speed<=2f)next.setRate(speed);
     next.play();
     if(resumeMs>0)applyInitialSeek(next,current,resumeMs,0);
+  }
+  /** Notify VLC of the real viewport without changing the SurfaceView layout.
+   * Must run on the UI thread, after and during attach, and after every episode.
+   */
+  private void syncVideoWindow(MediaPlayer target) {
+    if(target!=player || surface==null)return;
+    int w=host.getWidth(),h=host.getHeight();
+    if(w<=0||h<=0)return;
+    if(lastWindowW==w && lastWindowH==h)return;
+    lastWindowW=w;lastWindowH=h;
+    target.getVLCVout().setWindowSize(w,h);
+    Log.i("HGTV-LibVLC","VLC window="+w+"x"+h+" surface=match-parent");
   }
   /** Retry initial resume as soon as the demux is seekable, bounded to 8 seconds. */
   private void applyInitialSeek(final MediaPlayer target,final int ticket,final long position,
@@ -102,7 +137,7 @@ public final class HgtvLibVlcAdapter implements AutoCloseable {
   }
   public long audioDelayMs(){return audioOffsetUs/1000;}
   public String diagnostic() {
-    return "v3 视频兼容模式（v1 渲染） / 容器 "+
+    return "v4 居中窗口 "+lastWindowW+"x"+lastWindowH+" / 容器 "+
        host.getWidth()+"x"+host.getHeight()+" / 音频偏移 "+audioDelayMs()+"ms";
   }
   /** Stop player and local source every time the episode changes. */
@@ -117,7 +152,11 @@ public final class HgtvLibVlcAdapter implements AutoCloseable {
       try{old.getVLCVout().detachViews();}catch(RuntimeException ignored){}
       try{old.release();}catch(RuntimeException ignored){}
     }
+    if(viewportListener!=null){
+      host.removeOnLayoutChangeListener(viewportListener);viewportListener=null;
+    }
     if(surface!=null){host.removeView(surface);surface=null;}
+    lastWindowW=0;lastWindowH=0;
     if(server!=null){try{server.close();}catch(IOException ignored){}server=null;}
   }
   @Override public void close(){ensureUi();if(closed)return;stop();closed=true;vlc.release();}
