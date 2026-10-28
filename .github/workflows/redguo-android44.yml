@@ -69,7 +69,7 @@ jobs:
           chunks=re.findall(rb"-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----", data, re.S)
           assert len(chunks)==118, "Expected 118 PEM roots, got %s" % len(chunks)
           for i,chunk in enumerate(chunks):
-              der=base64.b64decode(re.sub(rb"\\s+", b"", chunk), validate=True)
+              der=base64.b64decode(re.sub(rb"\s+", b"", chunk), validate=True)
               result=subprocess.run(["openssl", "x509", "-inform", "DER", "-noout"],input=der,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
               assert result.returncode==0, "Certificate %s invalid: %s" % (i+1,result.stderr.decode())
           print("Validated 118 individual DER X.509 CA certificates packaged in APK")
