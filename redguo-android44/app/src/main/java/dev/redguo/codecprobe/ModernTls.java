@@ -3,6 +3,10 @@ package dev.redguo.codecprobe;
 import android.content.Context;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.ByteArrayInputStream;
+import android.util.Base64;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.security.KeyStore;
@@ -10,7 +14,6 @@ import java.security.SecureRandom;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Enumeration;
 import java.util.List;
 import javax.net.ssl.HandshakeCompletedEvent;
@@ -54,16 +57,49 @@ final class ModernTls {
             // Some operator firmwares do not expose AndroidCAStore.
             // The independent publicly audited root store remains available.
         }
+        // Android 4.4 CertificateFactory.generateCertificates(InputStream) may return an
+        // empty collection when a PEM bundle contains comments between certificates.
+        // Split the file by PEM markers and parse individual DER certificates instead.
         CertificateFactory cf = CertificateFactory.getInstance("X.509");
         int mozillaCount = 0;
-        InputStream stream=context.getAssets().open("mozilla-ca-2026-10-20.pem");
+        int pemSeen = 0;
+        BufferedReader reader = new BufferedReader(new InputStreamReader(
+                context.getAssets().open("mozilla-ca-2026-10-20.pem"), "US-ASCII"));
         try {
-            Collection<? extends Certificate> ca=cf.generateCertificates(stream);
-            for(Certificate cert:ca){
-                trusted.setCertificateEntry("mozilla-"+(mozillaCount++),cert);
+            boolean inside = false;
+            StringBuilder encoded = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String trimmed = line.trim();
+                if ("-----BEGIN CERTIFICATE-----".equals(trimmed)) {
+                    if (inside) throw new IOException("根证书 PEM 格式异常：嵌套开始标记");
+                    inside = true;
+                    encoded.setLength(0);
+                    pemSeen++;
+                } else if ("-----END CERTIFICATE-----".equals(trimmed)) {
+                    if (!inside || encoded.length()==0) {
+                        throw new IOException("根证书 PEM 格式异常：空证书");
+                    }
+                    try {
+                        byte[] der = Base64.decode(encoded.toString(), Base64.DEFAULT);
+                        Certificate cert = cf.generateCertificate(new ByteArrayInputStream(der));
+                        trusted.setCertificateEntry("mozilla-"+mozillaCount, cert);
+                        mozillaCount++;
+                    } catch(Exception error) {
+                        throw new IOException("第 "+pemSeen+" 张根证书解码失败："+error.getMessage(), error);
+                    }
+                    inside = false;
+                    encoded.setLength(0);
+                } else if (inside && trimmed.length()>0) {
+                    encoded.append(trimmed);
+                }
             }
-        }finally{stream.close();}
-        if(mozillaCount<100)throw new IOException("现代受信任根证书加载不完整："+mozillaCount);
+            if(inside)throw new IOException("根证书 PEM 最后一张不完整");
+        }finally{reader.close();}
+        status = "PEM 标记："+pemSeen+"，已解析："+mozillaCount+"，系统根证书："+systemCount;
+        if(pemSeen!=118 || mozillaCount!=pemSeen) {
+            throw new IOException("现代受信任根证书解析不完整："+mozillaCount+"/"+pemSeen);
+        }
         TrustManagerFactory trust=TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
         trust.init(trusted); // PKIX validation; no permissive X509TrustManager
         SSLContext tls=SSLContext.getInstance("TLS",Conscrypt.newProvider());

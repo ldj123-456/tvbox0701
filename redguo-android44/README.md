@@ -1,25 +1,24 @@
-# RedGuo Android 4.4 v0.7 — trusted root CA update
+# RedGuo Android 4.4 v0.8 — PEM certificate parser fix
 
-Targets: Android 4.4.2 / API 19 / ARM32 / Huawei EC6108V9U.
+Target: Huawei EC6108V9U / Android 4.4.2 / API 19 / ARM32. Independent diagnostic APK, not yet a complete Hongguo player.
 
-## Confirmed device tests
-- v0.4: LibVLC software playback succeeded for original 3-second H.264/HEVC 360p and HEVC 720p videos.
-- v0.5: system TLS negotiation failed (SSLv3 alert handshake failure).
-- v0.6: modern Conscrypt TLS negotiation advanced to normal PKIX certificate validation but failed with "Trust anchor for certification path not found." This identifies insufficient/mismatched trusted CA roots on this firmware or missing intermediate certificates, not a media codec problem.
+## Device-grounded results
+- v0.4 LibVLC software decoded H.264 360p, HEVC 360p and HEVC 720p three-second test clips.
+- v0.5 failed on legacy SSL handshake.
+- v0.6 progressed to PKIX trust-anchor failure with bundled Conscrypt.
+- v0.7 installed and opened, but logged "现代受信任根证书加载不完整：0；尚未发起TLS连接". The dated Mozilla PEM asset contains 118 certificates, but Android 4.4 CertificateFactory.generateCertificates(bundle) returned an empty collection.
 
-## Changes in v0.7
-- Keep Conscrypt 2.5.2 + SNI + TLSv1.2/1.3.
-- Load root CA certificates from the unmodified, dated public Mozilla store (2026-10-20, 118 PEM root certificates). Mirror source: `Chia-Network/mozilla-ca/cacert.pem`, with upstream description at https://curl.se/docs/caextract.html.
-- Combine Mozilla CA roots with those exposed by the AndroidCAStore if available, using normal `TrustManagerFactory` and PKIX validation.
-- Never use trust-all, disable hostname verification, or silently accept a certificate error.
-- On TLS success, show negotiated protocol and cipher. On errors, display specific trust chain or page parsing error.
-- APK is a diagnostic build for public Hongguo directory/search/episode IDs; it is NOT yet a real-video Hongguo player.
-- The bundled Mozilla certificate file remains under Mozilla Public License 2.0; see https://www.mozilla.org/MPL/2.0/.
+## v0.8 changes
+- Streams the Mozilla CA bundle line-by-line and splits on BEGIN/END CERTIFICATE markers, ignoring comments and metadata outside cert blocks.
+- Base64-decodes each X.509 certificate into DER, then passes each separately to the platform CertificateFactory.generateCertificate(ByteArrayInputStream).
+- Counts PEM markers and parsed certificates; rejects incomplete or malformed collections. This is not a bypass: standard PKIX checks, TLS SNI, and HTTPS hostname verification remain intact.
+- CI checks the 118 certificates **inside the built APK**, individually with OpenSSL, as well as API19/ARM32 JNI libs and APK signing.
+- UI shows v0.8 and retains detailed network diagnostics.
 
-## Functional test
-1. Uninstall v0.6 if debug signatures differ, then install v0.7.
-2. Select 红果官网目录（联网）.
-3. If successful, select a real drama and verify its complete episode list; then test 搜索.
-4. If failure remains, capture the error and 完整日志. If the page says HTTP 403 or 404, TLS repair worked but site access/URLs or site parsing require a separate fix.
+## TV test
+1. Install the APK from the GitHub Actions artifact. Existing debug APK might require uninstall due to ephemeral signing.
+2. Click 红果官网目录（联网）.
+3. If success, check a real drama's episode list and search by name.
+4. If failed, capture the full dialog; key statuses: root count, TLS negotiation, HTTP status, or catalog JSON parsing.
 
-No modifications to tvbox0701 main branch, existing HGTV or 影视仓. No server dependency.
+Official website directory access is separate from authenticated playback and DRM. This version does not claim to play full Hongguo dramas.

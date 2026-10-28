@@ -6,8 +6,8 @@ android {
   applicationId 'dev.redguo.codecprobe'
   minSdk 19
   targetSdk 28
-  versionCode 7
-  versionName '0.7.0'
+  versionCode 8
+  versionName '0.8.0'
   ndk { abiFilters 'armeabi-v7a' }
  }
  packaging { jniLibs { useLegacyPackaging true } }
