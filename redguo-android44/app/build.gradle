@@ -3,17 +3,14 @@ android {
  namespace 'dev.redguo.codecprobe'
  compileSdk 34
  defaultConfig {
-  applicationId 'dev.redguo.codecprobe'
+  applicationId 'dev.redguo.hevcdiagnostic'
   minSdk 19
   targetSdk 28
-  versionCode 8
-  versionName '0.8.0'
+  versionCode 101
+  versionName '1.0-hevc'
   ndk { abiFilters 'armeabi-v7a' }
  }
  packaging { jniLibs { useLegacyPackaging true } }
  compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
 }
-dependencies {
-  implementation 'org.videolan.android:libvlc-all:3.5.1'
-  implementation 'org.conscrypt:conscrypt-android:2.5.2'
-}
+dependencies { implementation 'org.videolan.android:libvlc-all:3.5.1' }

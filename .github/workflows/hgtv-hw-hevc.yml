@@ -1,0 +1,63 @@
+name: EC6108 HEVC Hardware Decoder Diagnostic API19
+on:
+  push:
+    branches: [hgtv-hevc-hardware-diagnostic]
+    paths:
+      - 'redguo-android44/**'
+      - '.github/workflows/hgtv-hw-hevc.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - name: Android 4.4 SDK compile packages
+        shell: bash
+        run: |
+          set -e
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'platforms;android-34' 'build-tools;34.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with: {gradle-version: '8.7'}
+      - name: Generate 12-second 24 fps original video benchmark clips
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y ffmpeg)
+          mkdir -p redguo-android44/app/src/main/assets
+          for line in 'hevc_480 854x480 libx265 700k' 'hevc_720 1280x720 libx265 1400k' 'h264_720 1280x720 libx264 1400k'; do
+            read -r name resolution encoder bitrate <<< "$line"
+            extra=()
+            if [[ "$encoder" == libx265 ]]; then
+              extra=(-x265-params 'pools=2:frame-threads=2:wpp=0:log-level=error')
+            fi
+            timeout 240s ffmpeg -nostdin -hide_banner -loglevel error -y               -f lavfi -i "testsrc2=duration=12:size=${resolution}:rate=24"               -f lavfi -i "sine=frequency=440:duration=12" -t 12               -c:v "$encoder" -preset ultrafast -threads 2 -pix_fmt yuv420p               -b:v "$bitrate" "${extra[@]}" -c:a aac -b:a 64k               "redguo-android44/app/src/main/assets/${name}.mp4"
+          done
+          ls -lh redguo-android44/app/src/main/assets/*.mp4
+      - name: Build Android 4.4 compatible APK
+        run: gradle -p redguo-android44 --no-daemon :app:assembleDebug
+      - name: Verify ARM32 LibVLC APK and signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=redguo-android44/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$APK" | tee /tmp/hevc-app.txt
+          grep -q "sdkVersion:'19'" /tmp/hevc-app.txt
+          unzip -l "$APK" > /tmp/hevc-files.txt
+          grep -q 'lib/armeabi-v7a/libvlcjni.so' /tmp/hevc-files.txt
+          for name in hevc_480 hevc_720 h264_720; do
+            grep -q "assets/${name}.mp4" /tmp/hevc-files.txt
+          done
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose --min-sdk-version 19 "$APK" | tee /tmp/hevc-sign.txt
+          grep -q 'Verified using v1 scheme.*true' /tmp/hevc-sign.txt
+          sha256sum "$APK" > redguo-android44/app/build/outputs/apk/debug/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EC6108-HEVC-HW-Test-Android44
+          path: redguo-android44/app/build/outputs/apk/debug/
+          if-no-files-found: error
