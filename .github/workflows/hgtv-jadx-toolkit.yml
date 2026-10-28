@@ -1,0 +1,29 @@
+name: HGTV static analysis toolkit (JADX only)
+on:
+  push:
+    branches: [hgtv-player-backend-api19]
+    paths: ['.github/workflows/hgtv-jadx-toolkit.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package-jadx:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download official JADX open-source release
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --connect-timeout 20             'https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-1.5.6.zip'             --output /tmp/jadx-1.5.6.zip
+          mkdir -p jadx
+          unzip -q /tmp/jadx-1.5.6.zip -d jadx
+          test -f jadx/bin/jadx
+          chmod +x jadx/bin/jadx
+          jadx/bin/jadx --version
+          du -sh jadx
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JADX-1.5.6-official-tools
+          path: jadx/
+          if-no-files-found: error
+          retention-days: 2
