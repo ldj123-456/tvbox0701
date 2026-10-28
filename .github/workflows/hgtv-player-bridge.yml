@@ -1,0 +1,44 @@
+name: HGTV Android 4.4 LibVLC backend AAR
+on:
+  push:
+    branches: [hgtv-player-backend-api19]
+    paths:
+      - 'hgtv-bridge/**'
+      - '.github/workflows/hgtv-player-bridge.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'platforms;android-34' 'build-tools;34.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with: {gradle-version: '8.7'}
+      - name: Test Java loopback media bridge
+        run: |
+          mkdir -p /tmp/hgtv-range-classes
+          javac --release 8 -d /tmp/hgtv-range-classes hgtv-bridge/bridge/src/main/java/dev/redguo/hgtvbridge/LoopbackRangeServer.java hgtv-bridge/bridge/src/test-plain/java/dev/redguo/hgtvbridge/RangeBridgeTest.java
+          java -cp /tmp/hgtv-range-classes dev.redguo.hgtvbridge.RangeBridgeTest
+      - name: Compile actual Android 4.4 LibVLC integration library
+        run: gradle -p hgtv-bridge --no-daemon :bridge:assembleRelease
+      - name: Confirm AAR built
+        run: |
+          set -eu
+          ls -lh hgtv-bridge/bridge/build/outputs/aar
+          test -s hgtv-bridge/bridge/build/outputs/aar/bridge-release.aar
+          unzip -t hgtv-bridge/bridge/build/outputs/aar/bridge-release.aar
+          sha256sum hgtv-bridge/bridge/build/outputs/aar/bridge-release.aar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HGTV-LibVLC-Backend-Android44-AAR
+          path: hgtv-bridge/bridge/build/outputs/aar/bridge-release.aar
+          if-no-files-found: error

@@ -1,0 +1,8 @@
+plugins { id 'com.android.library' }
+android {
+ namespace 'dev.redguo.hgtvbridge'
+ compileSdk 34
+ defaultConfig { minSdk 19; consumerProguardFiles 'consumer-rules.pro' }
+ compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
+}
+dependencies { implementation 'org.videolan.android:libvlc-all:3.5.1' }
