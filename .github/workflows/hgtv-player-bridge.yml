@@ -37,8 +37,19 @@ jobs:
           test -s hgtv-bridge/bridge/build/outputs/aar/bridge-release.aar
           unzip -t hgtv-bridge/bridge/build/outputs/aar/bridge-release.aar
           sha256sum hgtv-bridge/bridge/build/outputs/aar/bridge-release.aar
+      - name: Convert Android backend AAR classes to API19 DEX
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p hgtv-bridge/bridge/build/outputs/injection
+          unzip -p hgtv-bridge/bridge/build/outputs/aar/bridge-release.aar classes.jar > /tmp/hgtv-bridge-classes.jar
+          "$ANDROID_HOME/build-tools/34.0.0/d8" --min-api 19 --lib "$ANDROID_HOME/platforms/android-34/android.jar" --output hgtv-bridge/bridge/build/outputs/injection/ /tmp/hgtv-bridge-classes.jar
+          test -s hgtv-bridge/bridge/build/outputs/injection/classes.dex
+          sha256sum hgtv-bridge/bridge/build/outputs/injection/classes.dex
       - uses: actions/upload-artifact@v4
         with:
-          name: HGTV-LibVLC-Backend-Android44-AAR
-          path: hgtv-bridge/bridge/build/outputs/aar/bridge-release.aar
+          name: HGTV-LibVLC-Backend-API19-Dex
+          path: |
+            hgtv-bridge/bridge/build/outputs/aar/bridge-release.aar
+            hgtv-bridge/bridge/build/outputs/injection/classes.dex
           if-no-files-found: error
