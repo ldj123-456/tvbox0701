@@ -43,6 +43,9 @@ public final class HgtvLibVlcAdapter implements AutoCloseable {
     opts.add("--no-video-title-show");
     opts.add("--network-caching=350");
     opts.add("--file-caching=350");
+    // Prefer A/V sync over retaining late video frames on slow ARMv7 CPUs.
+    opts.add("--drop-late-frames");
+    opts.add("--skip-frames");
     vlc=new LibVLC(context.getApplicationContext(),opts);
   }
 
@@ -102,7 +105,8 @@ public final class HgtvLibVlcAdapter implements AutoCloseable {
     if(target!=player || surface==null)return;
     int w=host.getWidth(),h=host.getHeight();
     if(w<=0||h<=0)return;
-    if(lastWindowW==w && lastWindowH==h)return;
+    // Always resend: the first pre-attach window call may not reach the
+    // native vout; the post-attach callback must not be skipped.
     lastWindowW=w;lastWindowH=h;
     target.getVLCVout().setWindowSize(w,h);
     Log.i("HGTV-LibVLC","VLC window="+w+"x"+h+" surface=match-parent");
