@@ -22,6 +22,7 @@ public final class HgtvPlaybackFallback {
   private final FrameLayout overlay;
   private final TextView message;
   private final HgtvLibVlcAdapter vlc;
+  private int audioStep;
 
   private HgtvPlaybackFallback(Activity a,Object media,long position) throws Exception {
     activity=a;
@@ -34,7 +35,7 @@ public final class HgtvPlaybackFallback {
     message.setTextSize(15);
     message.setPadding(14,12,14,12);
     message.setBackgroundColor(0xAA000000);
-    message.setText("HGTV 原内容接口 · LibVLC 软件播放\n确定：暂停/继续 · 左右：快进退 · 上下：切集 · 返回：退出");
+    message.setText("HGTV 原内容接口 · LibVLC 软件播放\n确定：暂停/继续 · 左右：快进退 · 上下：切集\n菜单：音画同步诊断 · 返回：退出");
     overlay.addView(message,new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM));
     vlc=new HgtvLibVlcAdapter(a,overlay);
     try{
@@ -100,6 +101,14 @@ public final class HgtvPlaybackFallback {
         active.vlc.seek(active.vlc.positionMs()-10000);return true;
       case KeyEvent.KEYCODE_DPAD_RIGHT:
         active.vlc.seek(active.vlc.positionMs()+10000);return true;
+      case KeyEvent.KEYCODE_MENU:
+        active.audioStep=(active.audioStep+1)%5;
+        long[] delays={0,150,-150,300,-300};
+        active.vlc.audioDelayMs(delays[active.audioStep]);
+        active.message.setVisibility(View.VISIBLE);
+        active.message.setText("HGTV · LibVLC 调试\n"+
+             active.vlc.diagnostic()+"\n菜单：继续切换音画偏移");
+        return true;
       case KeyEvent.KEYCODE_DPAD_UP:active.next(1);return true;
       case KeyEvent.KEYCODE_DPAD_DOWN:active.next(-1);return true;
       case KeyEvent.KEYCODE_BACK:closeActive();return false;
