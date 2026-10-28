@@ -1,0 +1,26 @@
+name: HGTV APK patch toolkit (Apktool only)
+on:
+  push:
+    branches: [hgtv-player-backend-api19]
+    paths: ['.github/workflows/hgtv-apktool-toolkit.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package-apktool:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download official Apktool 3.0.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p apktool
+          curl -L --fail --retry 3 --connect-timeout 20             'https://github.com/iBotPeaches/Apktool/releases/download/v3.0.3/apktool_3.0.3.jar'             -o apktool/apktool.jar
+          java -jar apktool/apktool.jar --version
+          sha256sum apktool/apktool.jar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Apktool-3.0.3-official-tool
+          path: apktool/apktool.jar
+          if-no-files-found: error
+          retention-days: 2
