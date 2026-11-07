@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: xuanxuan-free-ws-test
+    runtime: node
+    plan: free
+    buildCommand: cd free-render-ws-smoke-test && npm install --omit=dev
+    startCommand: cd free-render-ws-smoke-test && npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
