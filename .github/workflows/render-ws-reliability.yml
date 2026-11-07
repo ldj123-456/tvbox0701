@@ -1,0 +1,81 @@
+name: Render free-tier extended reliability diagnostics
+
+on:
+  push:
+    branches:
+      - render-free-ws-test
+    paths:
+      - .github/workflows/render-ws-reliability.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: External HTTP latency, WebSocket reconnect and 64-second sustained echo
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const origin = 'https://xuanxuan-free-ws-test.onrender.com';
+          const wsUrl = 'wss://xuanxuan-free-ws-test.onrender.com/echo';
+          const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+          const percentile = (arr, p) => [...arr].sort((a,b)=>a-b)[Math.ceil(p*arr.length)-1];
+          const httpRtts = [];
+          for (let i = 0; i < 20; i++) {
+            const start = performance.now();
+            const res = await fetch(origin + '/health', { signal: AbortSignal.timeout(45000), cache: 'no-store' });
+            const body = await res.json();
+            if (res.status !== 200 || body.ok !== true) throw Error('HTTP failed request='+i+' status='+res.status);
+            httpRtts.push(Math.round(performance.now() - start));
+            await sleep(200);
+          }
+          console.log('HTTP_20_OF_20_PASS', JSON.stringify({ minMs:Math.min(...httpRtts), medianMs:percentile(httpRtts,0.5), p95Ms:percentile(httpRtts,0.95), maxMs:Math.max(...httpRtts) }));
+          async function connect() {
+            return await new Promise((resolve,reject)=>{
+              const ws = new WebSocket(wsUrl);
+              const timeout = setTimeout(()=>{ ws.close(); reject(Error('WebSocket connection timed out')); },30000);
+              ws.addEventListener('open',()=>{clearTimeout(timeout);resolve(ws)},{once:true});
+              ws.addEventListener('error',()=>{clearTimeout(timeout);reject(Error('WebSocket connection failed'))},{once:true});
+            });
+          }
+          async function echo(ws,payload) {
+            return await new Promise((resolve,reject)=>{
+              const started=performance.now();
+              const timeout=setTimeout(()=>{clean();reject(Error('WebSocket echo timed out'));},12000);
+              const onMessage=event=>{clean(); if(event.data!==payload){reject(Error('Mismatched echoed message'));return}resolve(Math.round(performance.now()-started));};
+              const onClose=()=>{clean();reject(Error('WebSocket unexpectedly closed'));};
+              const onError=()=>{clean();reject(Error('WebSocket error'));};
+              const clean=()=>{clearTimeout(timeout);ws.removeEventListener('message',onMessage);ws.removeEventListener('close',onClose);ws.removeEventListener('error',onError)};
+              ws.addEventListener('message',onMessage);
+              ws.addEventListener('close',onClose);
+              ws.addEventListener('error',onError);
+              ws.send(payload);
+            });
+          }
+          const reconnectRtts=[];
+          for(let i=0;i<5;i++){
+            const ws=await connect();
+            reconnectRtts.push(await echo(ws,'reconnect-test-'+i));
+            ws.close();
+            await sleep(650);
+          }
+          console.log('WEBSOCKET_RECONNECT_5_OF_5_PASS',JSON.stringify({echoRttsMs:reconnectRtts}));
+          const ws=await connect();
+          const sustained=[];
+          for(let i=0;i<9;i++){
+            sustained.push(await echo(ws,'sustained-test-'+i));
+            if(i<8)await sleep(8000);
+          }
+          ws.close();
+          console.log('WEBSOCKET_SUSTAINED_64_SEC_PASS',JSON.stringify({messages:sustained.length,echoRttP95Ms:percentile(sustained,0.95),echoRttMaxMs:Math.max(...sustained)}));
+          console.log('ALL_EXTENDED_DIAGNOSTICS_PASS');
+          NODE
