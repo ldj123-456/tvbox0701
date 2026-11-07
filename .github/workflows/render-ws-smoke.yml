@@ -1,0 +1,69 @@
+name: Render free HTTP and WebSocket smoke test
+
+on:
+  push:
+    branches:
+      - render-free-ws-test
+    paths:
+      - .github/workflows/render-ws-smoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Verify public HTTP endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 15); do
+            code=$(curl --max-time 30 -sS -L -o /tmp/render-health -w '%{http_code}' https://xuanxuan-free-ws-test.onrender.com/health) || code=000
+            if [ "$code" = "200" ] && grep -Eq '"ok"[[:space:]]*:[[:space:]]*true' /tmp/render-health; then
+              echo "HTTP_HEALTH_PASS"
+              cat /tmp/render-health
+              exit 0
+            fi
+            echo "HTTP retry $i: status=$code"
+            sleep 8
+          done
+          echo "HTTP_HEALTH_FAIL"
+          exit 1
+
+      - name: Set up Node 22 for WebSocket client
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify public WSS echo
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const url = 'wss://xuanxuan-free-ws-test.onrender.com/echo';
+          const ws = new WebSocket(url);
+          const watchdog = setTimeout(() => {
+            console.error('WEBSOCKET_ECHO_TIMEOUT');
+            process.exit(1);
+          }, 25000);
+          ws.addEventListener('open', () => {
+            console.log('WEBSOCKET_HANDSHAKE_PASS');
+            ws.send('render-ws-external-test');
+          });
+          ws.addEventListener('message', (event) => {
+            if (event.data !== 'render-ws-external-test') {
+              console.error('WEBSOCKET_ECHO_BAD_RESPONSE', event.data);
+              process.exit(1);
+            }
+            clearTimeout(watchdog);
+            console.log('WEBSOCKET_ECHO_PASS');
+            ws.close();
+            process.exit(0);
+          });
+          ws.addEventListener('error', (event) => {
+            console.error('WEBSOCKET_ECHO_ERROR', event.message || 'network error');
+            process.exit(1);
+          });
+          NODE
