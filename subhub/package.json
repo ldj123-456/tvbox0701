@@ -1,0 +1,12 @@
+{
+  "name": "xuanxuan-subscription-hub",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "node --check _worker.js && node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
